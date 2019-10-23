@@ -22,7 +22,7 @@ const Country = ({ country }) => {
   const [ weather, setWeather ] = useState({})
 
   const params = {
-    access_key: 'a23436fd170b2069d8c69cdd74706b0f',
+    access_key: 'KEY-CODE',
     query: country.capital
   }
 
