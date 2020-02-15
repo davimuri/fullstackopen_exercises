@@ -1,0 +1,28 @@
+{
+  "name": "library-graphql",
+  "version": "1.0.0",
+  "description": "learning graphql",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davimuri/library-graphql.git"
+  },
+  "keywords": [
+    "graphql"
+  ],
+  "author": "David Murillo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/davimuri/library-graphql/issues"
+  },
+  "homepage": "https://github.com/davimuri/library-graphql#readme",
+  "dependencies": {
+    "apollo-server": "^2.9.16",
+    "graphql": "^14.6.0",
+    "uuid": "^3.4.0"
+  }
+}
