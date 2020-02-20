@@ -1,49 +1,21 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation } from '@apollo/react-hooks'
-import { gql } from 'apollo-boost'
-
-const ALL_AUTHORS = gql`
-  {
-    allAuthors {
-      id
-      name
-      born
-      bookCount
-    }
-  }
-`
-
-const UPDATE_AUTHOR = gql`
-mutation EditAuthor($name: String!, $setBornTo: Int!){
-  editAuthor(
-    name: $name,
-    setBornTo: $setBornTo
-  ) {
-    id,
-    name,
-    born,
-    bookCount
-  }
-}`
 
 const Authors = (props) => {
   const [name, setName] = useState('')
   const [born, setBorn] = useState('')
-  const { loading, error, data } = useQuery(ALL_AUTHORS)
-  const [updateAuthor] = useMutation(UPDATE_AUTHOR);
 
   if (!props.show) {
     return null
   }
-  if (loading) return <p>Loading...</p>
-  if (error) return <p>Error</p>
+  if (props.allAuthorsResultQuery.loading) return <p>Loading...</p>
+  if (props.allAuthorsResultQuery.error) return <p>Error</p>
 
-  const authors = data.allAuthors
+  const authors = props.allAuthorsResultQuery.data.allAuthors
 
   const submit = async (e) => {
     e.preventDefault()
 
-    updateAuthor({
+    props.updateAuthor({
       variables: {
         name: name,
         setBornTo: parseInt(born)

@@ -1,7 +1,9 @@
-const { ApolloServer, UserInputError, gql } = require('apollo-server')
+const { ApolloServer, gql, UserInputError, AuthenticationError } = require('apollo-server')
 const uuid = require('uuid/v4')
+const jwt = require('jsonwebtoken')
 const config = require('./utils/config')
 const mongoose = require('mongoose')
+const User = require('./models/user')
 const Author = require('./models/author')
 const Book = require('./models/book')
 
@@ -18,6 +20,14 @@ mongoose.connect(config.MONGODB_URI, { useUnifiedTopology: true, useNewUrlParser
   })
 
 const typeDefs = gql`
+  type User {
+    username: String!
+    favoriteGenre: String!
+    id: ID!
+  }
+  type Token {
+    value: String!
+  }
   type Book {
     title: String!
     published: Int!
@@ -33,12 +43,21 @@ const typeDefs = gql`
   }
   type Query {
     hello: String!
+    me: User
     bookCount: Int!
     allBooks(author: String, genre: String): [Book]!
     authorCount: Int!
     allAuthors: [Author!]!
   }
   type Mutation {
+    createUser(
+      username: String!
+      favoriteGenre: String!
+    ): User
+    login(
+      username: String!
+      password: String!
+    ): Token
     addBook(
       title: String!
       published: Int!
@@ -51,6 +70,25 @@ const typeDefs = gql`
     ): Author
   }
 `
+const createUser = (root, args) => {
+  const user = new User({
+    username: args.username,
+    favoriteGenre: args.favoriteGenre
+  })
+  return user.save()
+}
+
+const login = async (root, args) => {
+  const user = await User.findOne({ username: args.username })
+  if (!user || args.password !== 'secred') {
+    throw new UserInputError("wrong credentials")
+  }
+  const userForToken = {
+    username: user.username,
+    id: user._id,
+  }
+  return { value: jwt.sign(userForToken, config.SECRET) }
+}
 
 const findBooks = async (root, args) => {
   const query = Book.find()
@@ -63,7 +101,10 @@ const findBooks = async (root, args) => {
   return query.exec()
 }
 
-const addBook = async (root, args) => {
+const addBook = async (root, args, context) => {
+  if (!context.currentUser) {
+    throw new AuthenticationError("not authenticated")
+  }
   let author = await Author.findOne({ name: args.author })
   try {
     if (!author) {
@@ -83,7 +124,10 @@ const addBook = async (root, args) => {
   }
 }
 
-const editAuthor = async (root, args) => {
+const editAuthor = async (root, args, context) => {
+  if (!context.currentUser) {
+    throw new AuthenticationError("not authenticated")
+  }
   const author = await Author.findOne({ name: args.name })
   author.born = args.setBornTo
   try {
@@ -99,14 +143,23 @@ const editAuthor = async (root, args) => {
 const resolvers = {
   Query: {
     hello: () => { return "world" },
+    me: (root, args, context) => {
+      const usr = context.currentUser
+      if (!usr) {
+        throw new AuthenticationError("not authenticated")
+      }
+      return usr
+    },
     bookCount: () => Book.collection.countDocuments(),
     allBooks: (root, args) => findBooks(root, args),
     authorCount: () => Author.collection.countDocuments(),
     allAuthors: () => Author.find({})
   },
   Mutation: {
-    addBook: (root, args) => addBook(root, args),
-    editAuthor: (root, args) => editAuthor(root, args)
+    createUser: (root, args) => createUser(root, args),
+    login: (root, args) => login(root, args),
+    addBook: (root, args, context) => addBook(root, args, context),
+    editAuthor: (root, args, context) => editAuthor(root, args, context)
   },
   Author: {
     bookCount: (root) => Book.where({ author: root._id }).countDocuments()
@@ -116,9 +169,23 @@ const resolvers = {
   }
 }
 
+const context = async ({ req }) => {
+  const auth = req ? req.headers.authorization : null
+  if (auth && auth.toLowerCase().startsWith('bearer ')) {
+    try {
+      const decodedToken = jwt.verify(auth.substring(7), config.SECRET)
+      const currentUser = await User.findById(decodedToken.id)
+      return { currentUser }
+    } catch (error) {
+      return {}
+    }
+  }
+}
+
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  context
 })
 
 server.listen().then(({ url }) => {

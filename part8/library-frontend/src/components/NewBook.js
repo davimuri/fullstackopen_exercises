@@ -1,22 +1,4 @@
 import React, { useState } from 'react'
-import gql from 'graphql-tag'
-import { useMutation } from '@apollo/react-hooks'
-
-const ADD_BOOK = gql`
-mutation AddBook($title: String!, $published: Int!, $author: String!, $genres: [String!]!){
-  addBook(
-    title: $title
-    published: $published
-    author: $author
-    genres: $genres
-  ) {
-    id
-    title
-    published
-    author
-    genres
-  }
-}`
 
 const NewBook = (props) => {
   const [title, setTitle] = useState('')
@@ -24,7 +6,6 @@ const NewBook = (props) => {
   const [published, setPublished] = useState('')
   const [genre, setGenre] = useState('')
   const [genres, setGenres] = useState([])
-  const [addBook, { data }] = useMutation(ADD_BOOK);
 
   if (!props.show) {
     return null
@@ -34,7 +15,7 @@ const NewBook = (props) => {
     e.preventDefault()
 
     console.log('add book...')
-    addBook({
+    props.addBook({
       variables: {
         title: title,
         published: parseInt(published),
