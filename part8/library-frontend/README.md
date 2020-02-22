@@ -1,5 +1,7 @@
-Front end of library graphql server.
-It uses Apollo client.
+# Library Frontend
+
+* Front end of [library graphql server](https://github.com/davimuri/fullstackopen_exercises/tree/master/part8/library-graphql).
+* It uses Apollo client.
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

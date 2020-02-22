@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/davimuri/library-graphql.git"
+    "url": "git+https://github.com/davimuri/fullstackopen_exercises"
   },
   "keywords": [
     "graphql"
@@ -17,9 +17,9 @@
   "author": "David Murillo",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/davimuri/library-graphql/issues"
+    "url": "https://github.com/davimuri/fullstackopen_exercises/issues"
   },
-  "homepage": "https://github.com/davimuri/library-graphql#readme",
+  "homepage": "https://github.com/davimuri/fullstackopen_exercises#readme",
   "dependencies": {
     "apollo-server": "^2.9.16",
     "dotenv": "^8.2.0",
