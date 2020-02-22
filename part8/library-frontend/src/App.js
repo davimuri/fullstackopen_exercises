@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useApolloClient, useQuery, useMutation } from '@apollo/react-hooks'
+import {
+  useApolloClient, useQuery, useMutation, useSubscription
+} from '@apollo/react-hooks'
 import { gql } from 'apollo-boost'
 import './App.css'
 import Authors from './components/Authors'
@@ -31,6 +33,15 @@ const ALL_BOOKS = gql`
   }
 `
 
+const AUTHOR_DETAILS = gql`
+  fragment AuthorDetails on Author {
+    id
+    name
+    born
+    bookCount
+  }
+`
+
 const ADD_BOOK = gql`
 mutation AddBook($title: String!, $published: Int!, $author: String!, $genres: [String!]!){
   addBook(
@@ -44,23 +55,35 @@ mutation AddBook($title: String!, $published: Int!, $author: String!, $genres: [
     published
     genres
     author {
-      id
-      name
-      born
-      bookCount
+      ...AuthorDetails
     }
   }
-}`
+}
+${AUTHOR_DETAILS}
+`
+
+const BOOK_ADDED = gql`
+subscription {
+  bookAdded {
+    id
+    title
+    published
+    genres
+    author {
+      ...AuthorDetails
+    }
+  }
+}
+${AUTHOR_DETAILS}
+`
 
 const ALL_AUTHORS = gql`
   {
     allAuthors {
-      id
-      name
-      born
-      bookCount
+      ...AuthorDetails
     }
   }
+  ${AUTHOR_DETAILS}
 `
 
 const UPDATE_AUTHOR = gql`
@@ -69,12 +92,11 @@ mutation EditAuthor($name: String!, $setBornTo: Int!){
     name: $name,
     setBornTo: $setBornTo
   ) {
-    id,
-    name,
-    born,
-    bookCount
+    ...AuthorDetails
   }
-}`
+}
+${AUTHOR_DETAILS}
+`
 
 const App = () => {
   const [page, setPage] = useState('authors')
@@ -96,23 +118,51 @@ const App = () => {
   const meResultQuery = useQuery(ME)
   const allBooksResultQuery = useQuery(ALL_BOOKS)
   const allAuthorsResultQuery = useQuery(ALL_AUTHORS)
-  const [addBook] = useMutation(ADD_BOOK, {
-    onError: handleError,
-    update: (store, response) => {
-      const allBooksInStore = store.readQuery({ query: ALL_BOOKS })
-      allBooksInStore.allBooks.push(response.data.addBook)
-      store.writeQuery({
+
+  const updateCacheWithBook = (addedBook) => {
+    const allBooksInStore = client.readQuery({ query: ALL_BOOKS })
+    const addedBookNotInCache = -1 >= allBooksInStore.allBooks.findIndex(
+      b => b.id === addedBook.id
+    )
+    if (addedBookNotInCache) {
+      allBooksInStore.allBooks.push(addedBook)
+      client.writeQuery({
         query: ALL_BOOKS,
         data: allBooksInStore
       })
-      const allAuthorsInStore = store.readQuery({ query: ALL_AUTHORS })
-      allAuthorsInStore.allAuthors.push(response.data.addBook.author)
-      store.writeQuery({
+    }
+  }
+
+  const updateCacheWithAuthor = (author) => {
+    const allAuthorsInStore = client.readQuery({ query: ALL_AUTHORS })
+    const authorNotInCache = -1 >= allAuthorsInStore.allAuthors.findIndex(
+      a => a.id === author.id
+    )
+    if (authorNotInCache) {
+      allAuthorsInStore.allAuthors.push(author)
+      client.writeQuery({
         query: ALL_AUTHORS,
         data: allAuthorsInStore
       })
     }
+  }
+
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      window.alert(`book added: ${subscriptionData.data.bookAdded.title}`)
+      updateCacheWithBook(subscriptionData.data.bookAdded)
+      updateCacheWithAuthor(subscriptionData.data.bookAdded.author)
+    }
   })
+
+  const [addBook] = useMutation(ADD_BOOK, {
+    onError: handleError,
+    update: (store, response) => {
+      updateCacheWithBook(response.data.addBook)
+      updateCacheWithAuthor(response.data.addBook.author)
+    }
+  })
+
   const [updateAuthor] = useMutation(UPDATE_AUTHOR, {
     onError: handleError,
     update: (store, response) => {
